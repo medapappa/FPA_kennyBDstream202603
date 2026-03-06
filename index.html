@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPA Kitchen</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Bebas+Neue&family=DM+Serif+Display:ital@0;1&family=Noto+Sans+JP:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;}
+input,textarea,select{font-family:inherit;}
+
+/* ─── ROOT ─────────────────────────────────────────── */
+html,body{width:100%;height:100%;overflow:hidden;background:#222;}
+
+/* ─── VIEWPORT WRAPPER ─────────────────────────────── */
+/* Centers a 1920×1080 canvas in the browser window    */
+#vp{
+  width:1920px;height:1080px;
+  transform-origin:top left;
+  position:absolute;
+  overflow:hidden;            /* clip bg to this box */
+}
+
+/* ─── FULL-BG (fills #vp) ─────────────────────────── */
+#fullBg{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;transition:background 0.5s;}
+
+/* ─── SHELL (1920×850, top of #vp) ─────────────────── */
+/* All interactive content sits here.                  */
+#shell{
+  position:absolute;top:0;left:0;
+  width:1920px;height:850px;
+  display:flex;flex-direction:column;
+  z-index:1;overflow:hidden;
+}
+
+/* ─── FLOATING UTIL (fixed to screen, always visible) ─ */
+#utilBar{
+  position:fixed;
+  bottom:16px;right:20px;
+  display:flex;gap:8px;align-items:center;
+  z-index:8000;
+}
+.util-btn{
+  padding:8px 18px;border-radius:20px;
+  background:rgba(20,20,30,0.72);backdrop-filter:blur(10px);
+  color:rgba(255,255,255,0.65);font-size:13px;letter-spacing:0.07em;
+  border:1px solid rgba(255,255,255,0.14);
+  transition:all 0.2s;
+}
+.util-btn:hover{background:rgba(20,20,30,0.92);color:#fff;}
+.util-btn.active{background:rgba(255,255,255,0.92);color:#222;border-color:transparent;}
+.util-sep{width:1px;height:20px;background:rgba(255,255,255,0.2);}
+
+/* ════════════════════════════════════════════════════
+   TOPBAR
+════════════════════════════════════════════════════ */
+#topbar{
+  position:relative;z-index:10;flex-shrink:0;
+  height:108px;
+  display:flex;align-items:center;
+  padding:0 52px 0 52px;
+  gap:0;
+  overflow:visible;
+}
+body.t-loi   #topbar{background:rgba(225,240,255,0.96);}
+body.t-kapy  #topbar{background:rgba(255,248,238,0.96);}
+body.t-raskoh#topbar{background:rgba(255,252,225,0.96);}
+
+/* Strip at bottom of topbar */
+#topbarStrip{position:absolute;bottom:0;left:0;right:0;height:4px;z-index:1;}
+body.t-loi   #topbarStrip{background:linear-gradient(90deg,#5BAAFF,#B8DCFF,#5BAAFF);}
+body.t-kapy  #topbarStrip{background:linear-gradient(90deg,#D4845A,#FFCBA4,#D4845A);}
+body.t-raskoh#topbarStrip{background:linear-gradient(90deg,#FFD700,#FFF3A0,#FFD700);}
+
+/* Logo area */
+.logo-area{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.logo-icon{font-size:56px;line-height:1;flex-shrink:0;}
+
+.store-logo{font-weight:900;white-space:nowrap;line-height:1.05;flex-shrink:0;}
+body.t-loi   .store-logo{font-family:'Playfair Display',serif;font-size:50px;color:#1B6FBF;letter-spacing:0.01em;}
+body.t-kapy  .store-logo{font-family:'DM Serif Display',serif;font-style:italic;font-size:48px;color:#8B4513;letter-spacing:0.01em;}
+body.t-raskoh .store-logo{font-family:'Bebas Neue',sans-serif;font-size:62px;color:#B8860B;letter-spacing:0.06em;}
+
+/* Divider */
+.logo-divider{width:3px;border-radius:2px;flex-shrink:0;margin:0 36px;}
+body.t-loi   .logo-divider{height:56px;background:#5BAAFF;}
+body.t-kapy  .logo-divider{height:54px;background:#D4845A;}
+body.t-raskoh .logo-divider{height:62px;background:#FFD700;}
+
+/* Genre */
+.genre-wrap{flex:1;display:flex;align-items:center;gap:14px;min-width:0;overflow:hidden;}
+.genre-label{font-size:13px;letter-spacing:0.2em;font-weight:800;flex-shrink:0;}
+body.t-loi   .genre-label{color:#7BBCE0;}
+body.t-kapy  .genre-label{color:#C4956A;}
+body.t-raskoh .genre-label{color:#C8A820;}
+
+.genre-scroll{display:flex;gap:8px;overflow-x:auto;cursor:grab;flex:1;min-width:0;
+  scrollbar-width:none;user-select:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;}
+.genre-scroll::-webkit-scrollbar{display:none;}
+.genre-scroll.dragging{cursor:grabbing;}
+
+.gchip{padding:8px 22px;border-radius:30px;white-space:nowrap;font-size:15px;font-weight:700;
+  letter-spacing:0.04em;border:2px solid transparent;transition:all 0.2s;flex-shrink:0;}
+body.t-loi   .gchip{background:#DFF0FF;color:#5BAAFF;}
+body.t-kapy  .gchip{background:#FFF0E0;color:#D4845A;}
+body.t-raskoh .gchip{background:#FFF8D0;color:#B8860B;}
+body.t-loi   .gchip.active{background:#5BAAFF;color:#fff;}
+body.t-kapy  .gchip.active{background:#D4845A;color:#fff;}
+body.t-raskoh .gchip.active{background:#FFD700;color:#5A4000;}
+.gchip:hover{opacity:0.8;transform:scale(1.04);}
+
+/* ════════════════════════════════════════════════════
+   CONTENT
+════════════════════════════════════════════════════ */
+#content{flex:1;display:flex;min-height:0;overflow:hidden;}
+
+/* ─── MENU AREA ──────────────────────────────────── */
+#menuArea{flex:1;display:flex;flex-direction:column;padding:18px 28px 12px;min-width:0;overflow:hidden;}
+
+#menuGrid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  grid-template-rows:repeat(2,1fr);
+  gap:16px;
+  flex:1;min-height:0;
+}
+
+/* ─── CARD ───────────────────────────────────────── */
+.menu-card{
+  border-radius:22px;cursor:pointer;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;user-select:none;
+  transition:transform 0.22s cubic-bezier(.34,1.56,.64,1),box-shadow 0.22s;
+  animation:cardIn 0.32s ease both;
+  border:3px solid transparent;
+}
+@keyframes cardIn{from{opacity:0;transform:scale(0.92) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
+
+body.t-loi   .menu-card{background:#fff;box-shadow:0 4px 18px rgba(91,170,255,0.12);}
+body.t-kapy  .menu-card{background:#FFFAF5;box-shadow:0 4px 18px rgba(212,132,90,0.12);}
+body.t-raskoh .menu-card{background:#FFFDF0;box-shadow:0 4px 18px rgba(255,215,0,0.15);}
+
+body.t-loi   .menu-card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 16px 44px rgba(91,170,255,0.22);border-color:#5BAAFF;}
+body.t-kapy  .menu-card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 16px 44px rgba(212,132,90,0.2); border-color:#D4845A;}
+body.t-raskoh .menu-card:hover{transform:translateY(-6px) scale(1.02);box-shadow:0 16px 44px rgba(255,215,0,0.25); border-color:#FFD700;}
+.menu-card:active{transform:scale(0.97);}
+.menu-card.added::after{content:'';position:absolute;inset:0;border-radius:22px;pointer-events:none;border:3px solid var(--ac);}
+body.t-loi   {--ac:#5BAAFF;} body.t-kapy{--ac:#D4845A;} body.t-raskoh{--ac:#FFD700;}
+
+/* Image: 68% of card */
+.card-img-wrap{width:100%;flex:0 0 68%;position:relative;overflow:hidden;border-radius:18px 18px 0 0;}
+.card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform 0.4s;}
+.menu-card:hover .card-img-wrap img{transform:scale(1.06);}
+.card-emoji-fb{width:100%;height:100%;min-height:140px;display:flex;align-items:center;justify-content:center;font-size:72px;}
+
+/* Genre tag */
+.card-genre-tag{position:absolute;top:10px;left:10px;backdrop-filter:blur(8px);font-size:12px;font-weight:700;padding:4px 12px;border-radius:14px;letter-spacing:0.04em;}
+body.t-loi   .card-genre-tag{background:rgba(91,170,255,0.85);color:#fff;}
+body.t-kapy  .card-genre-tag{background:rgba(212,132,90,0.85);color:#fff;}
+body.t-raskoh .card-genre-tag{background:rgba(255,215,0,0.9);color:#5A4000;}
+
+/* Price badge — overlapping image bottom-right */
+.card-price-badge{
+  position:absolute;bottom:0;right:0;
+  font-size:15px;font-weight:800;letter-spacing:0.02em;
+  padding:6px 14px 6px 20px;
+  border-radius:14px 0 0 0;
+}
+body.t-loi   .card-price-badge{background:rgba(91,170,255,0.88);color:#fff;}
+body.t-kapy  .card-price-badge{background:rgba(180,90,30,0.88);color:#fff;}
+body.t-raskoh .card-price-badge{background:rgba(180,130,0,0.88);color:#fff;}
+
+/* Qty badge */
+.card-qty-badge{position:absolute;top:10px;right:10px;font-size:13px;font-weight:800;padding:3px 12px;border-radius:16px;color:#fff;opacity:0;transition:opacity 0.2s;pointer-events:none;}
+body.t-loi   .card-qty-badge{background:#5BAAFF;}
+body.t-kapy  .card-qty-badge{background:#D4845A;}
+body.t-raskoh .card-qty-badge{background:#E09000;}
+.menu-card.added .card-qty-badge{opacity:1;}
+
+/* Card body */
+.card-body{padding:9px 14px 10px;flex:1;display:flex;flex-direction:column;}
+.card-name{font-weight:800;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+body.t-loi   .card-name{font-family:'Playfair Display',serif;font-size:19px;color:#1A3D6B;}
+body.t-kapy  .card-name{font-family:'DM Serif Display',serif;font-size:19px;color:#5C3010;}
+body.t-raskoh .card-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:0.04em;color:#4A3000;}
+.card-desc{font-size:11px;line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:3px;}
+body.t-loi   .card-desc{color:#6A90B8;}
+body.t-kapy  .card-desc{color:#A07850;}
+body.t-raskoh .card-desc{color:#907040;}
+
+/* Empty */
+.menu-empty{grid-column:1/-1;grid-row:1/-1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-size:20px;border-radius:22px;border:2px dashed rgba(0,0,0,0.1);color:#aaa;}
+
+/* ─── PAGINATION ─────────────────────────────────── */
+#pagination{display:flex;align-items:center;justify-content:center;gap:14px;padding-top:10px;flex-shrink:0;}
+.page-btn{width:40px;height:40px;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border:2px solid rgba(0,0,0,0.12);color:#aaa;}
+.page-btn:hover:not(:disabled){color:#333;border-color:#333;}
+.page-btn:disabled{opacity:0.25;cursor:default;}
+.page-dots{display:flex;gap:8px;}
+.page-dot{width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,0.15);transition:all 0.2s;}
+body.t-loi   .page-dot.active{background:#5BAAFF;transform:scale(1.4);}
+body.t-kapy  .page-dot.active{background:#D4845A;transform:scale(1.4);}
+body.t-raskoh .page-dot.active{background:#FFD700;transform:scale(1.4);}
+
+/* ════════════════════════════════════════════════════
+   SIDEBAR — "Kenny's Order" rounded block
+════════════════════════════════════════════════════ */
+#sidebar{
+  width:340px;flex-shrink:0;
+  display:flex;flex-direction:column;
+  padding:18px 16px 18px;overflow:hidden;
+}
+
+/* Rounded card block for the order panel */
+.order-panel{
+  flex:1;display:flex;flex-direction:column;
+  border-radius:28px;padding:18px 18px 16px;
+  overflow:hidden;
+  transition:background 0.4s,box-shadow 0.4s;
+}
+body.t-loi   .order-panel{background:rgba(210,235,255,0.75);box-shadow:0 8px 32px rgba(91,170,255,0.14);border:2px solid rgba(91,170,255,0.25);}
+body.t-kapy  .order-panel{background:rgba(255,235,215,0.75);box-shadow:0 8px 32px rgba(212,132,90,0.14);border:2px solid rgba(212,132,90,0.22);}
+body.t-raskoh .order-panel{background:rgba(255,250,200,0.75);box-shadow:0 8px 32px rgba(255,215,0,0.18);border:2px solid rgba(255,215,0,0.35);}
+
+.sidebar-title{font-weight:900;font-size:26px;margin-bottom:1px;transition:color 0.4s;}
+body.t-loi   .sidebar-title{font-family:'Playfair Display',serif;color:#1A5FA0;}
+body.t-kapy  .sidebar-title{font-family:'DM Serif Display',serif;font-style:italic;color:#7A3A10;}
+body.t-raskoh .sidebar-title{font-family:'Bebas Neue',sans-serif;letter-spacing:0.08em;color:#8A6000;}
+.sidebar-sub{font-size:11px;letter-spacing:0.14em;padding-bottom:10px;margin-bottom:12px;border-bottom:2px solid rgba(0,0,0,0.07);}
+body.t-loi   .sidebar-sub{color:#7BBCE0;}
+body.t-kapy  .sidebar-sub{color:#C4956A;}
+body.t-raskoh .sidebar-sub{color:#C8A820;}
+
+#orderList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:7px;min-height:0;scrollbar-width:thin;}
+#orderList::-webkit-scrollbar{width:3px;}
+#orderList::-webkit-scrollbar-thumb{border-radius:2px;background:rgba(0,0,0,0.1);}
+
+.order-empty-msg{text-align:center;font-size:13px;letter-spacing:0.06em;line-height:2.2;margin-top:24px;color:rgba(0,0,0,0.3);}
+
+/* Order item with +/- qty controls */
+.order-item{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;
+  border-radius:16px;flex-shrink:0;animation:slideIn 0.2s ease;
+}
+body.t-loi   .order-item{background:rgba(255,255,255,0.85);border:1px solid rgba(91,170,255,0.2);}
+body.t-kapy  .order-item{background:rgba(255,255,255,0.85);border:1px solid rgba(212,132,90,0.2);}
+body.t-raskoh .order-item{background:rgba(255,255,255,0.85);border:1px solid rgba(255,215,0,0.35);}
+@keyframes slideIn{from{opacity:0;transform:translateX(10px);}to{opacity:1;transform:translateX(0);}}
+
+.order-thumb{width:42px;height:42px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;background:rgba(0,0,0,0.05);}
+.order-thumb img{width:100%;height:100%;object-fit:cover;}
+.order-info{flex:1;min-width:0;}
+.order-name{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#333;}
+.order-pr{font-size:10px;color:#999;}
+
+/* +/- qty controls */
+.qty-ctrl{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.qty-btn{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;line-height:1;transition:all 0.15s;flex-shrink:0;}
+body.t-loi   .qty-btn{background:rgba(91,170,255,0.18);color:#5BAAFF;}
+body.t-kapy  .qty-btn{background:rgba(212,132,90,0.18);color:#D4845A;}
+body.t-raskoh .qty-btn{background:rgba(255,215,0,0.25);color:#B8860B;}
+.qty-btn:hover{filter:brightness(1.1);transform:scale(1.1);}
+.qty-num{font-size:14px;font-weight:800;min-width:20px;text-align:center;color:#333;}
+
+.order-rm{color:#CCC;font-size:11px;padding:2px;transition:color 0.15s;flex-shrink:0;}
+.order-rm:hover{color:#FF5555;}
+
+.order-sep{height:2px;background:rgba(0,0,0,0.07);margin:10px 0 8px;flex-shrink:0;}
+.order-total-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:3px;flex-shrink:0;}
+.order-total-lbl{font-size:11px;letter-spacing:0.14em;font-weight:700;color:#999;}
+.order-total-val{font-size:22px;font-weight:900;color:#333;}
+body.t-loi   .order-total-val{font-family:'Playfair Display',serif;}
+body.t-kapy  .order-total-val{font-family:'DM Serif Display',serif;}
+body.t-raskoh .order-total-val{font-family:'Bebas Neue',sans-serif;letter-spacing:0.04em;font-size:26px;}
+.cal-target-display{font-size:11px;letter-spacing:0.05em;margin-bottom:10px;flex-shrink:0;color:#aaa;}
+.cal-target-val{font-weight:700;}
+body.t-loi   .cal-target-val{color:#5BAAFF;}
+body.t-kapy  .cal-target-val{color:#D4845A;}
+body.t-raskoh .cal-target-val{color:#B8860B;}
+
+.cal-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border-radius:18px;font-size:18px;font-weight:800;letter-spacing:0.04em;transition:opacity 0.2s,transform 0.15s;box-shadow:0 8px 22px rgba(0,0,0,0.14);flex-shrink:0;}
+body.t-loi   .cal-btn{background:linear-gradient(135deg,#5BAAFF,#3A88E0);color:#fff;font-family:'Playfair Display',serif;}
+body.t-kapy  .cal-btn{background:linear-gradient(135deg,#D4845A,#B5623A);color:#fff;font-family:'DM Serif Display',serif;}
+body.t-raskoh .cal-btn{background:linear-gradient(135deg,#FFD700,#FFA500);color:#4A2800;font-family:'Bebas Neue',sans-serif;letter-spacing:0.1em;font-size:22px;}
+.cal-btn:hover{opacity:0.88;transform:translateY(-2px);}
+.cal-btn:active{transform:scale(0.97);}
+.cal-btn:disabled{opacity:0.22;cursor:default;transform:none;}
+
+/* ════════════════════════════════════════════════════
+   CALORIE OVERLAY  (fits in 1920×1080, content in 850)
+════════════════════════════════════════════════════ */
+/* Overlays fill #vp (1920×1080) */
+.vp-overlay{
+  display:none;position:absolute;inset:0;z-index:500;
+}
+.vp-overlay.active{display:flex;align-items:flex-start;justify-content:center;}
+
+/* Inner content area = 1920×850 */
+.vp-inner{
+  width:1920px;height:850px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;
+}
+
+#calPage{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;border-radius:0;
+}
+body.t-loi   #calPage{background:linear-gradient(135deg,#EAF4FF,#D0EAFF);}
+body.t-kapy  #calPage{background:linear-gradient(135deg,#FFF4EA,#FFE4CC);}
+body.t-raskoh #calPage{background:linear-gradient(135deg,#FFFDE8,#FFF4C0);}
+
+.cal-ring-wrap{position:relative;width:130px;height:130px;margin-bottom:30px;}
+.cal-ring{position:absolute;inset:0;border:4px solid transparent;border-radius:50%;animation:spin 1s linear infinite;}
+body.t-loi   .cal-ring{border-top-color:#5BAAFF;border-right-color:#A8D8FF;}
+body.t-kapy  .cal-ring{border-top-color:#D4845A;border-right-color:#FFCBA4;}
+body.t-raskoh .cal-ring{border-top-color:#FFD700;border-right-color:#FFF080;}
+.cal-ring-inner{position:absolute;inset:18px;border:2px solid rgba(0,0,0,0.08);border-bottom-color:transparent;border-radius:50%;animation:spin 1.8s linear infinite reverse;}
+.cal-ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:42px;animation:pulse 1.5s ease-in-out infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes pulse{0%,100%{transform:scale(0.88);}50%{transform:scale(1.06);}}
+
+.cal-title{font-size:50px;font-weight:900;margin-bottom:18px;}
+body.t-loi   .cal-title{font-family:'Playfair Display',serif;color:#1A6FBF;}
+body.t-kapy  .cal-title{font-family:'DM Serif Display',serif;font-style:italic;color:#8B4513;}
+body.t-raskoh .cal-title{font-family:'Bebas Neue',sans-serif;letter-spacing:0.06em;color:#8A6000;}
+.cal-dots{display:flex;gap:12px;margin-bottom:28px;}
+.cal-dot{width:10px;height:10px;border-radius:50%;animation:dotB 1.2s ease-in-out infinite;}
+body.t-loi   .cal-dot{background:#5BAAFF;}
+body.t-kapy  .cal-dot{background:#D4845A;}
+body.t-raskoh .cal-dot{background:#FFD700;}
+.cal-dot:nth-child(2){animation-delay:0.2s;}.cal-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes dotB{0%,100%{transform:translateY(0);opacity:0.3;}50%{transform:translateY(-10px);opacity:1;}}
+.cal-hint{font-size:15px;letter-spacing:0.25em;color:#aaa;animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:0.3;}50%{opacity:1;}}
+
+/* Result page */
+#resultPage{
+  position:absolute;inset:0;
+  display:none;flex-direction:column;align-items:center;justify-content:center;padding:30px 20px;
+}
+body.t-loi   #resultPage{background:linear-gradient(135deg,#EEF6FF,#D8EDFF);}
+body.t-kapy  #resultPage{background:linear-gradient(135deg,#FFF8F0,#FFE8D0);}
+body.t-raskoh #resultPage{background:linear-gradient(135deg,#FFFBEE,#FFF5C0);}
+#resultPage.show{display:flex;animation:fadeUp 0.5s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px);}to{opacity:1;transform:translateY(0);}}
+
+.kenny-wrap{width:200px;height:200px;margin-bottom:14px;border-radius:22px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:90px;animation:popIn 0.5s 0.1s both;flex-shrink:0;}
+body.t-loi   .kenny-wrap{background:#fff;box-shadow:0 10px 36px rgba(91,170,255,0.2);}
+body.t-kapy  .kenny-wrap{background:#FFFAF5;box-shadow:0 10px 36px rgba(212,132,90,0.2);}
+body.t-raskoh .kenny-wrap{background:#FFFDF0;box-shadow:0 10px 36px rgba(255,215,0,0.25);}
+.kenny-wrap img{width:100%;height:100%;object-fit:cover;}
+@keyframes popIn{from{opacity:0;transform:scale(0.5);}to{opacity:1;transform:scale(1);}}
+
+.result-comment{font-size:24px;margin-bottom:6px;animation:popIn 0.4s 0.2s both;font-weight:700;text-align:center;}
+body.t-loi   .result-comment{font-family:'Playfair Display',serif;font-style:italic;color:#1A6FBF;}
+body.t-kapy  .result-comment{font-family:'DM Serif Display',serif;font-style:italic;color:#8B4513;}
+body.t-raskoh .result-comment{font-family:'Bebas Neue',sans-serif;letter-spacing:0.06em;color:#8A6000;font-size:30px;}
+.result-lbl{font-size:12px;letter-spacing:0.3em;margin-bottom:4px;animation:popIn 0.4s 0.25s both;}
+body.t-loi   .result-lbl{color:#5BAAFF;}
+body.t-kapy  .result-lbl{color:#D4845A;}
+body.t-raskoh .result-lbl{color:#B8860B;}
+.result-num{font-weight:900;line-height:1;animation:popIn 0.5s 0.3s both;color:#222;}
+body.t-loi   .result-num{font-family:'Playfair Display',serif;font-size:90px;}
+body.t-kapy  .result-num{font-family:'DM Serif Display',serif;font-size:90px;}
+body.t-raskoh .result-num{font-family:'Bebas Neue',sans-serif;font-size:110px;letter-spacing:0.04em;}
+.result-unit{font-size:22px;margin-left:8px;}
+body.t-loi   .result-unit{font-family:'Playfair Display',serif;color:#5BAAFF;}
+body.t-kapy  .result-unit{font-family:'DM Serif Display',serif;color:#D4845A;}
+body.t-raskoh .result-unit{font-family:'Bebas Neue',sans-serif;color:#B8860B;font-size:28px;}
+.result-target-info{font-size:13px;color:#999;margin-top:5px;animation:popIn 0.4s 0.35s both;}
+.result-breakdown{margin-top:14px;width:100%;max-width:380px;animation:popIn 0.4s 0.45s both;max-height:150px;overflow-y:auto;scrollbar-width:thin;}
+.result-row{display:flex;justify-content:space-between;padding:5px 0;font-size:13px;border-bottom:1px dashed rgba(0,0,0,0.1);color:#888;}
+.result-row:last-child{border-bottom:none;}
+.result-close{margin-top:16px;padding:12px 36px;border-radius:40px;font-size:15px;font-weight:700;transition:all 0.2s;animation:popIn 0.4s 0.6s both;border:2px solid rgba(0,0,0,0.1);color:#666;background:#fff;}
+.result-close:hover{border-color:var(--ac);color:var(--ac);}
+
+/* ════════════════════════════════════════════════════
+   ADMIN OVERLAY  (full screen, free scroll)
+════════════════════════════════════════════════════ */
+#adminOverlay{
+  display:none;position:fixed;inset:0;z-index:9000;
+  overflow-y:auto;padding:28px 20px 60px;
+}
+#adminOverlay.active{display:block;}
+/* Backdrop */
+#adminOverlay::before{
+  content:'';position:fixed;inset:0;z-index:-1;
+  background:rgba(0,0,0,0.6);backdrop-filter:blur(10px);
+}
+
+/* ─ Admin modal ─ */
+.admin-modal{
+  max-width:1100px;margin:0 auto;
+  border-radius:28px;padding:32px 32px 28px;position:relative;
+}
+/* Per-member light theme */
+body.t-loi   .admin-modal{background:#EEF7FF;border:2px solid rgba(91,170,255,0.3);}
+body.t-kapy  .admin-modal{background:#FFF8F2;border:2px solid rgba(212,132,90,0.28);}
+body.t-raskoh .admin-modal{background:#FFFCEC;border:2px solid rgba(255,215,0,0.4);}
+
+.admin-close{position:absolute;top:16px;right:16px;width:38px;height:38px;border-radius:50%;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;border:2px solid rgba(0,0,0,0.1);color:#999;}
+.admin-close:hover{border-color:#FF5555;color:#FF5555;background:#fff0f0;}
+
+.admin-title{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:2px;}
+body.t-loi   .admin-title{color:#1A6FBF;}
+body.t-kapy  .admin-title{color:#8B4513;}
+body.t-raskoh .admin-title{color:#8A6000;}
+.admin-subtitle{font-size:12px;letter-spacing:0.12em;margin-bottom:18px;color:#999;}
+
+/* Admin member tabs */
+.admin-mtabs{display:flex;gap:8px;margin-bottom:22px;}
+.admin-mtab{padding:9px 24px;border-radius:24px;border:2px solid rgba(0,0,0,0.1);background:#fff;color:#999;font-size:14px;font-weight:700;letter-spacing:0.06em;transition:all 0.2s;}
+.admin-mtab:hover{color:#333;}
+.admin-mtab[data-m="loi"].active   {background:#5BAAFF;border-color:#5BAAFF;color:#fff;}
+.admin-mtab[data-m="kapy"].active  {background:#D4845A;border-color:#D4845A;color:#fff;}
+.admin-mtab[data-m="raskoh"].active{background:#FFD700;border-color:#FFD700;color:#5A4000;}
+
+.admin-layout{display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start;}
+
+/* Settings panel */
+.admin-settings-panel{display:flex;flex-direction:column;gap:14px;}
+.admin-section{background:#fff;border-radius:18px;padding:16px;border:1px solid rgba(0,0,0,0.07);box-shadow:0 2px 8px rgba(0,0,0,0.05);}
+.admin-section-title{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(0,0,0,0.07);}
+body.t-loi   .admin-section-title{color:#5BAAFF;}
+body.t-kapy  .admin-section-title{color:#D4845A;}
+body.t-raskoh .admin-section-title{color:#B8860B;}
+
+/* Genre */
+.genre-admin-list{display:flex;flex-direction:column;gap:5px;max-height:160px;overflow-y:auto;margin-bottom:8px;}
+.genre-admin-item{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;background:#F8F8F8;border-radius:8px;font-size:13px;cursor:grab;color:#444;}
+.genre-del{color:#CCC;font-size:12px;transition:color 0.15s;}
+.genre-del:hover{color:#FF5555;}
+.genre-add-row{display:flex;gap:8px;}
+.genre-ainp{flex:1;background:#F5F5F5;border:1px solid rgba(0,0,0,0.1);border-radius:8px;color:#333;font-size:13px;padding:8px 12px;transition:border-color 0.2s;}
+.genre-ainp:focus{outline:none;border-color:#999;}
+.genre-add-go{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:700;color:#fff;transition:opacity 0.2s;}
+body.t-loi   .genre-add-go{background:#5BAAFF;}
+body.t-kapy  .genre-add-go{background:#D4845A;}
+body.t-raskoh .genre-add-go{background:#E09000;}
+.genre-add-go:hover{opacity:0.82;}
+
+/* Cal target */
+.cal-target-row{display:flex;align-items:center;gap:10px;}
+.cal-target-inp{flex:1;background:#F5F5F5;border:1px solid rgba(0,0,0,0.1);border-radius:8px;color:#333;font-size:15px;padding:9px 12px;transition:border-color 0.2s;}
+.cal-target-inp:focus{outline:none;border-color:#999;}
+.cal-target-unit{font-size:13px;color:#999;}
+.cal-nearpin-note{font-size:11px;color:#BBB;margin-top:5px;}
+
+/* Kenny */
+.kenny-settings{display:flex;flex-direction:column;gap:14px;}
+.kenny-setting-item{display:flex;flex-direction:column;gap:4px;}
+.kenny-setting-lbl{font-size:11px;color:#999;}
+.kenny-preview{width:100%;height:70px;border-radius:10px;background:#F5F5F5;border:1px solid rgba(0,0,0,0.07);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:4px;}
+.kenny-preview img{width:100%;height:100%;object-fit:cover;}
+.k-inp{background:#F5F5F5;border:1px solid rgba(0,0,0,0.1);border-radius:8px;color:#333;font-size:12px;padding:7px 10px;transition:border-color 0.2s;width:100%;margin-bottom:3px;}
+.k-inp:focus{outline:none;border-color:#999;}
+.k-inp.comment{color:#555;font-size:11px;}
+
+/* ─── Menu items panel ───────────────────────────── */
+.admin-menu-panel{display:flex;flex-direction:column;}
+/* NO max-height / scroll — grows freely */
+.admin-items-list{display:flex;flex-direction:column;gap:10px;}
+
+.admin-item{
+  background:#fff;border:1px solid rgba(0,0,0,0.08);
+  border-radius:16px;padding:14px 14px 14px 10px;
+  display:grid;grid-template-columns:28px 1fr;gap:12px;align-items:start;
+  transition:box-shadow 0.2s,opacity 0.2s,transform 0.25s;will-change:transform;
+  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+}
+.admin-item.dragging{opacity:0.35;transform:scale(0.97);}
+.admin-item.drag-over{box-shadow:0 0 0 2px var(--ac);}
+
+.drag-handle{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:grab;padding-top:4px;color:#CCC;}
+.drag-handle:active{cursor:grabbing;}
+.drag-handle span{display:block;width:16px;height:2px;background:currentColor;border-radius:1px;}
+
+.admin-item-fields{display:flex;flex-direction:column;gap:8px;}
+.arow{display:grid;gap:8px;}
+.arow-del{grid-template-columns:2fr 1fr 1fr 30px;}
+.afield{display:flex;flex-direction:column;gap:3px;}
+.albl{font-size:10px;color:#BBB;letter-spacing:0.08em;}
+.ainp,.atxt,.asel{background:#F8F8F8;border:1px solid rgba(0,0,0,0.1);border-radius:8px;color:#333;font-size:13px;padding:7px 10px;transition:border-color 0.2s;width:100%;}
+.ainp:focus,.atxt:focus,.asel:focus{outline:none;border-color:#999;}
+.atxt{resize:none;height:46px;}
+.asel{height:32px;font-size:12px;}
+.adel{align-self:center;color:#CCC;font-size:17px;padding:4px;transition:color 0.15s;}
+.adel:hover{color:#FF5555;}
+.admin-img-preview{width:100%;height:68px;border-radius:9px;background:#F5F5F5;border:1px solid rgba(0,0,0,0.07);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:30px;margin-bottom:2px;flex-shrink:0;}
+.admin-img-preview img{width:100%;height:100%;object-fit:cover;}
+
+.admin-add-btn{margin-top:10px;width:100%;padding:12px;background:none;border:2px dashed rgba(0,0,0,0.13);border-radius:12px;color:#BBB;font-size:14px;letter-spacing:0.1em;transition:all 0.2s;}
+.admin-add-btn:hover{border-color:rgba(0,0,0,0.3);color:#555;}
+
+.admin-footer{display:flex;justify-content:flex-end;gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.07);}
+.admin-cancel{padding:11px 26px;border-radius:12px;border:1px solid rgba(0,0,0,0.12);color:#888;font-size:13px;background:#fff;transition:all 0.2s;}
+.admin-cancel:hover{border-color:#999;color:#333;}
+.admin-save{padding:11px 32px;border-radius:12px;font-size:14px;font-weight:800;transition:opacity 0.2s,transform 0.15s;color:#fff;}
+body.t-loi   .admin-save{background:#5BAAFF;}
+body.t-kapy  .admin-save{background:#D4845A;}
+body.t-raskoh .admin-save{background:#E09000;color:#fff;}
+.admin-save:hover{opacity:0.85;transform:translateY(-1px);}
+
+/* ─── Toast ──────────────────────────────────────── */
+#toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(16px);background:#222;border:1px solid rgba(255,255,255,0.15);color:#EEE;font-size:14px;letter-spacing:0.08em;padding:11px 26px;border-radius:40px;opacity:0;transition:opacity 0.3s,transform 0.3s;z-index:99999;pointer-events:none;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body class="t-loi">
+
+<!-- ─── FLOATING UTIL (always fixed, bottom-right) ──── -->
+<div id="utilBar">
+  <button class="util-btn active" data-m="loi"    onclick="switchMember('loi')">🍳 Loi</button>
+  <button class="util-btn"        data-m="kapy"   onclick="switchMember('kapy')">🥢 かぴー</button>
+  <button class="util-btn"        data-m="raskoh" onclick="switchMember('raskoh')">🍔 らすこー</button>
+  <div class="util-sep"></div>
+  <button class="util-btn" onclick="openAdmin()">⚙ 管理</button>
+</div>
+
+<!-- ─── VIEWPORT 1920×1080 ───────────────────────────── -->
+<div id="vp">
+
+  <!-- Full-BG (fills entire 1920×1080) -->
+  <div id="fullBg"></div>
+
+  <!-- SHELL 1920×850 (content area) -->
+  <div id="shell">
+
+    <!-- TOPBAR -->
+    <div id="topbar">
+      <div class="logo-area">
+        <div class="logo-icon" id="logoIcon">🍳</div>
+        <div class="store-logo" id="storeLogo">Loi's Kitchen</div>
+      </div>
+      <div class="logo-divider"></div>
+      <div class="genre-wrap">
+        <span class="genre-label">MENU</span>
+        <div class="genre-scroll" id="genreFilters"></div>
+      </div>
+      <div id="topbarStrip"></div>
+    </div>
+
+    <!-- CONTENT -->
+    <div id="content">
+      <div id="menuArea">
+        <div id="menuGrid"></div>
+        <div id="pagination">
+          <button class="page-btn" id="prevBtn" onclick="changePage(-1)" disabled>←</button>
+          <div class="page-dots" id="pageDots"></div>
+          <button class="page-btn" id="nextBtn" onclick="changePage(1)" disabled>→</button>
+        </div>
+      </div>
+
+      <!-- SIDEBAR -->
+      <div id="sidebar">
+        <div class="order-panel">
+          <div class="sidebar-title">Kenny's Order</div>
+          <div class="sidebar-sub" id="sidebarSub">— SELECT YOUR MEAL —</div>
+          <div id="orderList">
+            <div class="order-empty-msg" id="orderEmpty">メニューを選んでください</div>
+          </div>
+          <div class="order-sep"></div>
+          <div class="order-total-row">
+            <span class="order-total-lbl">TOTAL</span>
+            <span class="order-total-val" id="totalPrice">¥0</span>
+          </div>
+          <div class="cal-target-display" id="calTargetDisplay"></div>
+          <button class="cal-btn" id="calBtn" disabled onclick="openCalc()">🔥 カロリー計算</button>
+        </div>
+      </div>
+    </div><!-- /content -->
+  </div><!-- /shell -->
+
+  <!-- CALORIE OVERLAY (inside #vp = 1920×1080) -->
+  <div class="vp-overlay" id="overlay">
+    <div class="vp-inner">
+      <div id="calPage" onclick="showResult()">
+        <div class="cal-ring-wrap">
+          <div class="cal-ring"></div><div class="cal-ring-inner"></div>
+          <div class="cal-ring-icon">🍽️</div>
+        </div>
+        <div class="cal-title">カロリー計算中...</div>
+        <div class="cal-dots"><div class="cal-dot"></div><div class="cal-dot"></div><div class="cal-dot"></div></div>
+        <div class="cal-hint">クリックして結果を表示</div>
+      </div>
+      <div id="resultPage">
+        <div class="kenny-wrap" id="kennyImg">😐</div>
+        <div class="result-comment" id="resultComment"></div>
+        <div class="result-lbl">TOTAL CALORIES</div>
+        <div><span class="result-num" id="resultNum">0</span><span class="result-unit">kcal</span></div>
+        <div class="result-target-info" id="resultTargetInfo"></div>
+        <div class="result-breakdown" id="resultBreakdown"></div>
+        <button class="result-close" onclick="closeCalc()">← メニューに戻る</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /vp -->
+
+<!-- ADMIN (fixed, full screen) -->
+<div id="adminOverlay">
+  <div class="admin-modal">
+    <button class="admin-close" onclick="closeAdmin()">✕</button>
+    <div class="admin-title" id="adminTitle">管理ページ</div>
+    <div class="admin-subtitle">メニュー・ジャンル・カロリー目標・Kenny設定</div>
+    <div class="admin-mtabs">
+      <button class="admin-mtab active" data-m="loi"    onclick="switchAdminM('loi')">🍳 Loi</button>
+      <button class="admin-mtab"        data-m="kapy"   onclick="switchAdminM('kapy')">🥢 かぴー</button>
+      <button class="admin-mtab"        data-m="raskoh" onclick="switchAdminM('raskoh')">🍔 らすこー</button>
+    </div>
+    <div class="admin-layout">
+      <div class="admin-menu-panel">
+        <div class="admin-section-title" id="adminMenuTitle">メニュー一覧（ドラッグで順番変更）</div>
+        <div class="admin-items-list" id="adminItems"></div>
+        <button class="admin-add-btn" onclick="addItem()">＋ メニューを追加</button>
+      </div>
+      <div class="admin-settings-panel">
+        <div class="admin-section">
+          <div class="admin-section-title">ジャンル管理</div>
+          <div class="genre-admin-list" id="adminGenreList"></div>
+          <div class="genre-add-row">
+            <input class="genre-ainp" id="genreInput" placeholder="新しいジャンル" />
+            <button class="genre-add-go" onclick="addGenre()">追加</button>
+          </div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-title">目標カロリー</div>
+          <div class="cal-target-row">
+            <input class="cal-target-inp" type="number" id="calTargetInput" placeholder="例: 2000" />
+            <span class="cal-target-unit">kcal</span>
+          </div>
+          <div class="cal-nearpin-note">※ 目標±50kcalでニアピン賞</div>
+        </div>
+        <div class="admin-section">
+          <div class="admin-section-title">Kenny 設定</div>
+          <div class="kenny-settings">
+            <div class="kenny-setting-item">
+              <div class="kenny-setting-lbl">😊 目標以下（痩せケニー）</div>
+              <div class="kenny-preview" id="kPrev1">😊</div>
+              <input class="k-inp" id="kUrl1" placeholder="画像URL" oninput="prevKenny(1,this.value)" />
+              <input class="k-inp comment" id="kCom1" placeholder="コメント" />
+            </div>
+            <div class="kenny-setting-item">
+              <div class="kenny-setting-lbl">😐 ニアピン賞（±50kcal）</div>
+              <div class="kenny-preview" id="kPrev2">😐</div>
+              <input class="k-inp" id="kUrl2" placeholder="画像URL" oninput="prevKenny(2,this.value)" />
+              <input class="k-inp comment" id="kCom2" placeholder="コメント" />
+            </div>
+            <div class="kenny-setting-item">
+              <div class="kenny-setting-lbl">🤢 目標超過（太りゲロケニー）</div>
+              <div class="kenny-preview" id="kPrev3">🤢</div>
+              <input class="k-inp" id="kUrl3" placeholder="画像URL" oninput="prevKenny(3,this.value)" />
+              <input class="k-inp comment" id="kCom3" placeholder="コメント" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="admin-footer">
+      <button class="admin-cancel" onclick="closeAdmin()">キャンセル</button>
+      <button class="admin-save" onclick="saveAdmin()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════════════
+   CONFIG
+════════════════════════════════════════════════════ */
+const MCFG={
+  loi:   {cls:'t-loi',   icon:'🍳', name:"Loi's Kitchen",  sub:'FINE DINING — KENNY\'S ORDER'},
+  kapy:  {cls:'t-kapy',  icon:'🥢', name:'かぴーの食堂',    sub:'家庭の味 — KENNY\'S ORDER'},
+  raskoh:{cls:'t-raskoh',icon:'🍔', name:"Raskoh's Diner", sub:'AMERICAN DINER — KENNY\'S ORDER'},
+};
+const KENNY_FB={slim:'😊',normal:'😐',fat:'🤢'};
+const DEF_COM={slim:'食べ足りないケニー…',normal:'ニアピン！いい感じのケニー！',fat:'食べすぎのケニー…ゲロ'};
+
+/* ─── BACKGROUNDS ──────────────────────────────────── */
+function bgSVG(m){
+  if(m==='loi') return `
+    <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1920" height="1080" fill="#E8F4FF"/>
+      <circle cx="120" cy="100" r="90" fill="#C2DEFF" opacity=".55"/>
+      <circle cx="1820" cy="180" r="70" fill="#B8D8FF" opacity=".5"/>
+      <circle cx="260" cy="800" r="110" fill="#C8E6FF" opacity=".45"/>
+      <circle cx="1750" cy="900" r="80" fill="#B8D8FF" opacity=".45"/>
+      <circle cx="960" cy="60"  r="55" fill="#D4EAFF" opacity=".5"/>
+      ${dots(20,14,'#5BAAFF',0.07,100,80)}
+      <g opacity=".1" transform="translate(55,320)">
+        <rect x="8" y="0" width="5" height="70" rx="2.5" fill="#5BAAFF"/>
+        <rect x="3" y="12" width="15" height="24" rx="4" fill="#5BAAFF"/>
+        <rect x="28" y="0" width="5" height="90" rx="2.5" fill="#5BAAFF"/>
+        <path d="M28 35 Q40 22 40 0 L46 0 Q46 22 32 35" fill="#5BAAFF"/>
+      </g>
+      ${star(200,760,'#5BAAFF',0.22,14)}
+      ${star(1750,110,'#A8D8FF',0.2,11)}
+      ${star(1860,620,'#5BAAFF',0.18,12)}
+    </svg>`;
+  if(m==='kapy') return `
+    <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1920" height="1080" fill="#FFF8EE"/>
+      <circle cx="200" cy="140" r="110" fill="#FFD8A8" opacity=".42"/>
+      <circle cx="1760" cy="90"  r="75"  fill="#FFDCB0" opacity=".42"/>
+      <circle cx="1880" cy="850" r="95"  fill="#FFD0A0" opacity=".38"/>
+      <circle cx="90"   cy="780" r="85"  fill="#FFD8B0" opacity=".4"/>
+      ${gridLines(20,14,'#D4845A',0.04,100,80)}
+      <g opacity=".1" transform="translate(1760,350)">
+        <ellipse cx="40" cy="52" rx="36" ry="16" fill="#D4845A"/>
+        <rect x="4" y="20" width="72" height="32" rx="9" fill="#D4845A"/>
+        <path d="M76 30 Q95 30 95 46 Q95 62 76 62" stroke="#D4845A" stroke-width="6" fill="none"/>
+        <ellipse cx="40" cy="20" rx="36" ry="10" fill="#E8A070"/>
+      </g>
+      ${flower(1680,650,'#D4845A',0.16)}
+      ${flower(80,100,'#E8A070',0.1)}
+    </svg>`;
+  /* raskoh */
+  return `
+    <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+      <rect width="1920" height="1080" fill="#FFFCEC"/>
+      <circle cx="170" cy="170" r="100" fill="#FFE888" opacity=".42"/>
+      <circle cx="1790" cy="120" r="70"  fill="#FFE060" opacity=".4"/>
+      <circle cx="1890" cy="800" r="90"  fill="#FFE888" opacity=".38"/>
+      <circle cx="80"   cy="820" r="80"  fill="#FFE060" opacity=".38"/>
+      ${checker(1920,1080,'#FFD700',0.04)}
+      ${burst(1740,650,'#FFD700',0.14)}
+      ${burst(90,320,'#FFD700',0.08)}
+      <path d="M1860 60 L1848 102 L1865 102 L1846 152 L1878 96 L1860 96 Z" fill="#FFD700" opacity=".16"/>
+      <path d="M95 630 L83 672 L100 672 L81 722 L113 666 L95 666 Z" fill="#FFD700" opacity=".12"/>
+    </svg>`;
+}
+function dots(cols,rows,c,op,gx,gy){
+  let s='<g opacity="'+op+'">';
+  for(let r=0;r<rows;r++)for(let cl=0;cl<cols;cl++)
+    s+=`<circle cx="${cl*gx+gx/2}" cy="${r*gy+gy/2}" r="3.5" fill="${c}"/>`;
+  return s+'</g>';
+}
+function gridLines(cols,rows,c,op,gx,gy){
+  let s='<g opacity="'+op+'">';
+  for(let cl=0;cl<=cols;cl++) s+=`<line x1="${cl*gx}" y1="0" x2="${cl*gx}" y2="1080" stroke="${c}" stroke-width="1"/>`;
+  for(let r=0;r<=rows;r++)   s+=`<line x1="0" y1="${r*gy}" x2="1920" y2="${r*gy}" stroke="${c}" stroke-width="1"/>`;
+  return s+'</g>';
+}
+function star(cx,cy,c,op,r){
+  const pts=Array.from({length:5},(_,i)=>{const a=i*72-90;return `${cx+r*Math.cos(a*Math.PI/180)},${cy+r*Math.sin(a*Math.PI/180)}`;}).join(' ');
+  const pts2=Array.from({length:5},(_,i)=>{const a=i*72-54;return `${cx+r*0.38*Math.cos(a*Math.PI/180)},${cy+r*0.38*Math.sin(a*Math.PI/180)}`;}).join(' ');
+  return `<polygon points="${[...pts.split(' '),...pts2.split(' ')].join(' ')}" fill="${c}" opacity="${op}"/>`;
+}
+function flower(cx,cy,c,op){
+  let s=`<g opacity="${op}">`;
+  for(let i=0;i<6;i++) s+=`<ellipse cx="${cx+30*Math.cos(i*60*Math.PI/180)}" cy="${cy+30*Math.sin(i*60*Math.PI/180)}" rx="14" ry="8" transform="rotate(${i*60} ${cx+30*Math.cos(i*60*Math.PI/180)} ${cy+30*Math.sin(i*60*Math.PI/180)})" fill="${c}"/>`;
+  return s+`<circle cx="${cx}" cy="${cy}" r="9" fill="${c}"/></g>`;
+}
+function checker(W,H,c,op){
+  let s=`<g opacity="${op}">`;
+  const sz=90;
+  for(let r=0;r*sz<H;r++)for(let cl=0;cl*sz<W;cl++)
+    if((r+cl)%2===0) s+=`<rect x="${cl*sz}" y="${r*sz}" width="${sz}" height="${sz}" fill="${c}"/>`;
+  return s+'</g>';
+}
+function burst(cx,cy,c,op){
+  let s=`<g opacity="${op}">`;
+  for(let i=0;i<8;i++) s+=`<rect x="${cx-2}" y="${cy-42}" width="4" height="36" rx="2" fill="${c}" transform="rotate(${i*45} ${cx} ${cy})"/>`;
+  return s+`<circle cx="${cx}" cy="${cy}" r="12" fill="${c}"/></g>`;
+}
+
+/* ════════════════════════════════════════════════════
+   DATA
+════════════════════════════════════════════════════ */
+const DEF_MENUS={
+  loi:[
+    {id:'l1',name:'スパイシーチキンカレー',desc:'骨付きチキンを本格スパイスで3時間煮込んだ深い味わい',price:1200,cal:720,genre:'メイン',img:''},
+    {id:'l2',name:'バインミーサンドイッチ',desc:'ベトナム風ミートボールとナンプラードレッシング',price:980,cal:540,genre:'サンドイッチ',img:''},
+    {id:'l3',name:'フォー・ガー',desc:'鶏ガラ10時間スープのあっさり米麺',price:1100,cal:480,genre:'麺',img:''},
+    {id:'l4',name:'激辛タコス盛り合わせ',desc:'3種のサルサとアボカドディップ付き',price:1400,cal:650,genre:'メイン',img:''},
+    {id:'l5',name:'ライム入りクラフトコーラ',desc:'自家製スパイスシロップのノンアルコール',price:480,cal:120,genre:'ドリンク',img:''},
+    {id:'l6',name:'チェー（ベトナム甘味）',desc:'ナタデココとタピオカのミックスデザート',price:580,cal:280,genre:'デザート',img:''},
+    {id:'l7',name:'パクチーサラダ',desc:'たっぷりパクチーとレモングラスドレッシング',price:680,cal:180,genre:'サラダ',img:''},
+    {id:'l8',name:'揚げたて春巻き',desc:'豚挽肉と野菜の春巻き5本',price:780,cal:420,genre:'前菜',img:''},
+  ],
+  kapy:[
+    {id:'k1',name:'キャロットケーキ',desc:'クリームチーズフロスティングと胡桃のしっとりケーキ',price:680,cal:420,genre:'デザート',img:''},
+    {id:'k2',name:'かぴー特製お粥',desc:'生姜たっぷり薬膳風、卵黄のせ',price:750,cal:310,genre:'メイン',img:''},
+    {id:'k3',name:'ふわとろ出し巻き卵',desc:'昆布と鰹のだしがきいたやさしい味',price:620,cal:200,genre:'副菜',img:''},
+    {id:'k4',name:'ミルクティー白玉',desc:'濃厚ロイヤルミルクティーに白玉3個',price:580,cal:380,genre:'ドリンク',img:''},
+    {id:'k5',name:'チーズグリルトースト',desc:'グリュイエールチーズのカリカリ仕立て',price:520,cal:340,genre:'パン',img:''},
+    {id:'k6',name:'フルーツパフェ',desc:'旬のフルーツとホイップクリームたっぷり',price:880,cal:510,genre:'デザート',img:''},
+    {id:'k7',name:'あさり汁',desc:'国産あさりのシンプルな潮汁',price:380,cal:60,genre:'汁物',img:''},
+    {id:'k8',name:'おひたし盛り合わせ',desc:'旬野菜のおひたし3種',price:480,cal:90,genre:'副菜',img:''},
+  ],
+  raskoh:[
+    {id:'r1',name:'でかいリブアイステーキ',desc:'300g骨付きリブアイ、ガーリックバターソース',price:3200,cal:980,genre:'メイン',img:''},
+    {id:'r2',name:'二郎系ラーメン',desc:'ヤサイマシマシ、背脂多め、自家製タレ',price:1080,cal:1200,genre:'麺',img:''},
+    {id:'r3',name:'チーズバーガー塔',desc:'パテ2枚＋チーズ3枚、特製ダブルソース',price:1580,cal:860,genre:'バーガー',img:''},
+    {id:'r4',name:'からあげ10本盛り',desc:'国産鶏もも肉、自家製タレ24時間漬け',price:980,cal:720,genre:'揚げ物',img:''},
+    {id:'r5',name:'白米大盛り',desc:'新潟産コシヒカリ、おかわり1回無料',price:280,cal:450,genre:'ライス',img:''},
+    {id:'r6',name:'エナドリカクテル',desc:'複数ブランドをブレンドした禁断の一杯',price:680,cal:190,genre:'ドリンク',img:''},
+    {id:'r7',name:'チリチーズフライ',desc:'大量チリとチェダーチーズのポテト',price:780,cal:680,genre:'揚げ物',img:''},
+    {id:'r8',name:'アメリカンパンケーキ3枚',desc:'バター大量＋メープルシロップたっぷり',price:880,cal:760,genre:'デザート',img:''},
+  ],
+};
+const DEF_GENRES={
+  loi:   ['すべて','メイン','麺','サンドイッチ','サラダ','前菜','デザート','ドリンク'],
+  kapy:  ['すべて','メイン','副菜','汁物','パン','デザート','ドリンク'],
+  raskoh:['すべて','メイン','麺','バーガー','揚げ物','ライス','デザート','ドリンク'],
+};
+const DEF_SET={
+  loi:   {calTarget:2000,kenny1:'',kenny2:'',kenny3:'',kc1:'食べ足りないケニー…',kc2:'ニアピン！いい感じのケニー！',kc3:'食べすぎのケニー…ゲロ'},
+  kapy:  {calTarget:1800,kenny1:'',kenny2:'',kenny3:'',kc1:'食べ足りないケニー…',kc2:'ニアピン！いい感じのケニー！',kc3:'食べすぎのケニー…ゲロ'},
+  raskoh:{calTarget:3000,kenny1:'',kenny2:'',kenny3:'',kc1:'食べ足りないケニー…',kc2:'ニアピン！いい感じのケニー！',kc3:'食べすぎのケニー…ゲロ'},
+};
+
+/* ─── STORAGE ──────────────────────────────────────── */
+const ld=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):JSON.parse(JSON.stringify(d));}catch{return JSON.parse(JSON.stringify(d));}};
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+let menuData =ld('fpa_menus2', DEF_MENUS);
+let genreData=ld('fpa_genres2',DEF_GENRES);
+let setData  =ld('fpa_set2',   DEF_SET);
+
+let M='loi', pg=0, genre='すべて', order={};
+let aM='loi', aDraft={};
+
+/* ─── VIEWPORT SCALE ───────────────────────────────── */
+function scaleVP(){
+  const vp=document.getElementById('vp');
+  const sx=window.innerWidth/1920, sy=window.innerHeight/1080;
+  const sc=Math.min(sx,sy);
+  vp.style.transform=`scale(${sc})`;
+  vp.style.left=`${(window.innerWidth-1920*sc)/2}px`;
+  vp.style.top =`${(window.innerHeight-1080*sc)/2}px`;
+}
+window.addEventListener('resize',scaleVP); scaleVP();
+
+/* ─── GENRE SCROLL DRAG ─────────────────────────────── */
+function initScroll(){
+  const el=document.getElementById('genreFilters');
+  let down=false,sx,sl;
+  el.addEventListener('mousedown',e=>{down=true;el.classList.add('dragging');sx=e.pageX-el.offsetLeft;sl=el.scrollLeft;});
+  el.addEventListener('mouseleave',()=>{down=false;el.classList.remove('dragging');});
+  el.addEventListener('mouseup',  ()=>{down=false;el.classList.remove('dragging');});
+  el.addEventListener('mousemove',e=>{if(!down)return;e.preventDefault();el.scrollLeft=sl-(e.pageX-el.offsetLeft-sx)*1.5;});
+}
+
+/* ─── MEMBER SWITCH ─────────────────────────────────── */
+function switchMember(m){
+  M=m; pg=0; genre='すべて'; order={};
+  document.body.className=MCFG[m].cls;
+  document.querySelectorAll('.util-btn[data-m]').forEach(b=>b.classList.toggle('active',b.dataset.m===m));
+  document.getElementById('storeLogo').textContent=MCFG[m].name;
+  document.getElementById('logoIcon').textContent =MCFG[m].icon;
+  document.getElementById('sidebarSub').textContent=MCFG[m].sub;
+  document.getElementById('fullBg').innerHTML=bgSVG(m);
+  renderGenres(); renderGrid(); renderOrder();
+}
+
+/* ─── GENRES ────────────────────────────────────────── */
+function renderGenres(){
+  const c=document.getElementById('genreFilters'); c.innerHTML='';
+  (genreData[M]||['すべて']).forEach(g=>{
+    const b=document.createElement('button');
+    b.className='gchip'+(g===genre?' active':'');
+    b.textContent=g;
+    b.onclick=e=>{e.stopPropagation();genre=g;pg=0;renderGenres();renderGrid();};
+    c.appendChild(b);
+  });
+}
+
+/* ─── GRID ──────────────────────────────────────────── */
+function filtered(){const it=menuData[M]||[];return genre==='すべて'?it:it.filter(i=>i.genre===genre);}
+
+function renderGrid(){
+  const grid=document.getElementById('menuGrid'); grid.innerHTML='';
+  const items=filtered();
+  const tot=Math.max(1,Math.ceil(items.length/6));
+  if(pg>=tot) pg=tot-1;
+  const sl=items.slice(pg*6,pg*6+6);
+  if(!sl.length){
+    const e=document.createElement('div');e.className='menu-empty';
+    e.innerHTML='<div style="font-size:56px">🍽️</div><div>メニューがありません</div>';
+    grid.appendChild(e);
+  } else {
+    sl.forEach((item,i)=>{
+      const card=document.createElement('div');
+      card.className='menu-card'+(order[item.id]?' added':'');
+      card.id=`card-${item.id}`;
+      card.style.animationDelay=`${i*0.04}s`;
+
+      /* image or emoji */
+      const imgHTML=item.img
+        ? `<img src="${item.img}" alt="" /><div class="card-emoji-fb" style="display:none">🍽️</div>`
+        : `<div class="card-emoji-fb">🍽️</div>`;
+
+      card.innerHTML=`
+        <div class="card-img-wrap">
+          ${imgHTML}
+          <span class="card-genre-tag">${item.genre||''}</span>
+          <div class="card-price-badge">¥${Number(item.price).toLocaleString()}</div>
+        </div>
+        <div class="card-body">
+          <div class="card-name">${item.name}</div>
+          <div class="card-desc">${item.desc}</div>
+        </div>
+        <div class="card-qty-badge" id="badge-${item.id}">${order[item.id]?'×'+order[item.id].qty:'×1'}</div>`;
+
+      /* fix broken img → show emoji */
+      const img=card.querySelector('img');
+      if(img){
+        img.addEventListener('error',()=>{img.style.display='none';img.nextElementSibling.style.display='flex';});
+      }
+
+      card.addEventListener('click',()=>addToOrder(item));
+      grid.appendChild(card);
+    });
+  }
+  renderPag(tot);
+}
+
+function renderPag(tot){
+  const dots=document.getElementById('pageDots'); dots.innerHTML='';
+  for(let i=0;i<tot;i++){const d=document.createElement('div');d.className='page-dot'+(i===pg?' active':'');dots.appendChild(d);}
+  document.getElementById('prevBtn').disabled=pg<=0;
+  document.getElementById('nextBtn').disabled=pg>=tot-1;
+}
+function changePage(d){const t=Math.max(1,Math.ceil(filtered().length/6));pg=Math.max(0,Math.min(t-1,pg+d));renderGrid();}
+
+/* ─── ORDER ─────────────────────────────────────────── */
+function addToOrder(item){
+  if(order[item.id]) order[item.id].qty++;
+  else order[item.id]={item:JSON.parse(JSON.stringify(item)),qty:1};
+  updateBadge(item.id); renderOrder();
+}
+function setQty(id,delta){
+  if(!order[id]) return;
+  order[id].qty+=delta;
+  if(order[id].qty<=0) delete order[id];
+  updateBadge(id); renderOrder();
+}
+function updateBadge(id){
+  const card=document.getElementById(`card-${id}`);
+  const badge=document.getElementById(`badge-${id}`);
+  if(!card) return;
+  card.classList.toggle('added',!!order[id]);
+  if(order[id]) badge.textContent=`×${order[id].qty}`;
+}
+function renderOrder(){
+  const list=document.getElementById('orderList'),empty=document.getElementById('orderEmpty');
+  const totEl=document.getElementById('totalPrice'),btn=document.getElementById('calBtn');
+  const keys=Object.keys(order);
+  list.innerHTML='';
+  const s=setData[M]||{},tgt=Number(s.calTarget)||0;
+  document.getElementById('calTargetDisplay').innerHTML=
+    tgt?`目標: <span class="cal-target-val">${tgt.toLocaleString()} kcal</span>`:'';
+  if(!keys.length){list.appendChild(empty);totEl.textContent='¥0';btn.disabled=true;return;}
+  btn.disabled=false;
+  let tot=0;
+  keys.forEach(id=>{
+    const{item,qty}=order[id];
+    tot+=Number(item.price)*qty;
+    const row=document.createElement('div'); row.className='order-item';
+    const thumb=item.img
+      ?`<img src="${item.img}" onerror="this.style.display='none'" style="width:100%;height:100%;object-fit:cover;" />`
+      :'🍽️';
+    row.innerHTML=`
+      <div class="order-thumb">${thumb}</div>
+      <div class="order-info">
+        <div class="order-name">${item.name}</div>
+        <div class="order-pr">¥${Number(item.price).toLocaleString()}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="setQty('${id}',-1)">−</button>
+        <span class="qty-num">${qty}</span>
+        <button class="qty-btn" onclick="setQty('${id}',1)">＋</button>
+      </div>
+      <button class="order-rm" onclick="setQty('${id}',-999)">✕</button>`;
+    list.appendChild(row);
+  });
+  totEl.textContent=`¥${tot.toLocaleString()}`;
+}
+
+/* ─── CALORIE ───────────────────────────────────────── */
+function openCalc(){
+  document.getElementById('overlay').classList.add('active');
+  document.getElementById('calPage').style.display='flex';
+  document.getElementById('resultPage').classList.remove('show');
+}
+function showResult(){
+  let tot=0;
+  const items=Object.values(order);
+  items.forEach(({item,qty})=>tot+=Number(item.cal)*qty);
+  const s=setData[M]||{},tgt=Number(s.calTarget)||0,diff=tot-tgt;
+  const state=(!tgt||Math.abs(diff)<=50)?'normal':diff<-50?'slim':'fat';
+  const kw=document.getElementById('kennyImg');
+  const url={slim:s.kenny1,normal:s.kenny2,fat:s.kenny3}[state]||'';
+  if(url){
+    const img=document.createElement('img');
+    img.src=url;
+    img.onerror=()=>{kw.innerHTML=`<span style="font-size:90px">${KENNY_FB[state]}</span>`;};
+    kw.innerHTML=''; kw.appendChild(img);
+  } else {
+    kw.innerHTML=`<span style="font-size:90px">${KENNY_FB[state]}</span>`;
+  }
+  const cm={slim:s.kc1||DEF_COM.slim,normal:s.kc2||DEF_COM.normal,fat:s.kc3||DEF_COM.fat};
+  document.getElementById('resultComment').textContent=cm[state];
+  const ti=document.getElementById('resultTargetInfo');
+  ti.textContent=tgt?`目標 ${tgt.toLocaleString()} kcal → ${diff>=0?'+':''}${diff.toLocaleString()} kcal`:'目標未設定';
+  const bd=document.getElementById('resultBreakdown'); bd.innerHTML='';
+  items.forEach(({item,qty})=>{
+    const r=document.createElement('div');r.className='result-row';
+    r.innerHTML=`<span>🍽️ ${item.name}${qty>1?` ×${qty}`:''}</span><span>${(Number(item.cal)*qty).toLocaleString()} kcal</span>`;
+    bd.appendChild(r);
+  });
+  document.getElementById('resultNum').textContent=tot.toLocaleString();
+  document.getElementById('calPage').style.display='none';
+  document.getElementById('resultPage').classList.add('show');
+}
+function closeCalc(){document.getElementById('overlay').classList.remove('active');}
+
+/* ─── ADMIN ─────────────────────────────────────────── */
+function openAdmin(){
+  aM=M;
+  aDraft={
+    menus: JSON.parse(JSON.stringify(menuData)),
+    genres:JSON.parse(JSON.stringify(genreData)),
+    set:   JSON.parse(JSON.stringify(setData)),
+  };
+  document.getElementById('adminOverlay').classList.add('active');
+  renderATabs(); renderAContent();
+}
+function closeAdmin(){document.getElementById('adminOverlay').classList.remove('active');}
+
+function renderATabs(){
+  document.querySelectorAll('.admin-mtab').forEach(t=>t.classList.toggle('active',t.dataset.m===aM));
+}
+function switchAdminM(m){aM=m;renderATabs();renderAContent();}
+function renderAContent(){renderAGenres();renderASettings();renderAItems();}
+
+/* genres */
+function renderAGenres(){
+  const list=document.getElementById('adminGenreList'); list.innerHTML='';
+  (aDraft.genres[aM]||[]).filter(g=>g!=='すべて').forEach((g,i)=>{
+    const row=document.createElement('div');row.className='genre-admin-item';
+    row.innerHTML=`<span>🏷 ${g}</span><button class="genre-del" onclick="delGenre(${i})">✕</button>`;
+    list.appendChild(row);
+  });
+  document.getElementById('genreInput').value='';
+}
+function addGenre(){
+  const v=document.getElementById('genreInput').value.trim();if(!v)return;
+  if(!aDraft.genres[aM])aDraft.genres[aM]=['すべて'];
+  if(!aDraft.genres[aM].includes(v))aDraft.genres[aM].push(v);
+  renderAGenres();renderAItems();
+}
+function delGenre(i){
+  const g=aDraft.genres[aM].filter(g=>g!=='すべて');g.splice(i,1);
+  aDraft.genres[aM]=['すべて',...g];renderAGenres();renderAItems();
+}
+
+/* settings */
+function renderASettings(){
+  const s=aDraft.set[aM]||{};
+  document.getElementById('calTargetInput').value=s.calTarget||'';
+  document.getElementById('kUrl1').value=s.kenny1||'';
+  document.getElementById('kUrl2').value=s.kenny2||'';
+  document.getElementById('kUrl3').value=s.kenny3||'';
+  document.getElementById('kCom1').value=s.kc1||'';
+  document.getElementById('kCom2').value=s.kc2||'';
+  document.getElementById('kCom3').value=s.kc3||'';
+  prevKenny(1,s.kenny1||'');prevKenny(2,s.kenny2||'');prevKenny(3,s.kenny3||'');
+}
+function prevKenny(n,url){
+  const p=document.getElementById(`kPrev${n}`);if(!p)return;
+  const fb=['😊','😐','🤢'][n-1];
+  if(url){
+    const img=document.createElement('img');
+    img.src=url; img.style.cssText='width:100%;height:100%;object-fit:cover;';
+    img.onerror=()=>{p.innerHTML=`<span style="font-size:34px">${fb}</span>`;};
+    p.innerHTML=''; p.appendChild(img);
+  } else { p.innerHTML=`<span style="font-size:34px">${fb}</span>`; }
+}
+
+/* menu items */
+function gOpts(sel){
+  return (aDraft.genres[aM]||[]).filter(g=>g!=='すべて')
+    .map(g=>`<option value="${g}"${g===sel?' selected':''}>${g}</option>`).join('');
+}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderAItems(){
+  const c=document.getElementById('adminItems'); c.innerHTML='';
+  (aDraft.menus[aM]||[]).forEach((item,i)=>{
+    const div=document.createElement('div');
+    div.className='admin-item';div.dataset.idx=i;div.draggable=true;
+
+    /* image preview */
+    const prevHTML=item.img
+      ?`<img src="${item.img}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'" />`
+      :`<span style="font-size:28px">🍽️</span>`;
+
+    div.innerHTML=`
+      <div class="drag-handle" title="ドラッグで並び替え"><span></span><span></span><span></span></div>
+      <div class="admin-item-fields">
+        <div class="arow" style="grid-template-columns:80px 1fr">
+          <div class="admin-img-preview" id="aPrev_${i}">${prevHTML}</div>
+          <div class="afield">
+            <span class="albl">メニュー名</span>
+            <input class="ainp" value="${esc(item.name)}" oninput="updItem(${i},'name',this.value)" placeholder="メニュー名"/>
+            <span class="albl" style="margin-top:4px">説明文</span>
+            <textarea class="atxt" oninput="updItem(${i},'desc',this.value)" placeholder="説明">${esc(item.desc)}</textarea>
+          </div>
+        </div>
+        <div class="afield">
+          <span class="albl">画像URL（入力すると左にプレビュー表示）</span>
+          <input class="ainp" value="${esc(item.img||'')}" oninput="updItem(${i},'img',this.value);updateImgPrev(${i},this.value)" placeholder="https://..."/>
+        </div>
+        <div class="arow arow-del">
+          <div class="afield">
+            <span class="albl">ジャンル</span>
+            <select class="asel" onchange="updItem(${i},'genre',this.value)">${gOpts(item.genre)}</select>
+          </div>
+          <div class="afield">
+            <span class="albl">価格（円）</span>
+            <input class="ainp" type="number" value="${item.price}" oninput="updItem(${i},'price',this.value)"/>
+          </div>
+          <div class="afield">
+            <span class="albl">カロリー</span>
+            <input class="ainp" type="number" value="${item.cal}" oninput="updItem(${i},'cal',this.value)"/>
+          </div>
+          <button class="adel" onclick="delItem(${i})">🗑</button>
+        </div>
+      </div>`;
+    div.addEventListener('dragstart',dS);
+    div.addEventListener('dragover', dO);
+    div.addEventListener('drop',     dD);
+    div.addEventListener('dragend',  dE);
+    c.appendChild(div);
+  });
+}
+function updateImgPrev(i,url){
+  const p=document.getElementById(`aPrev_${i}`);if(!p)return;
+  if(url){
+    const img=document.createElement('img');
+    img.src=url;img.style.cssText='width:100%;height:100%;object-fit:cover;';
+    img.onerror=()=>{p.innerHTML='<span style="font-size:28px">🍽️</span>';};
+    p.innerHTML='';p.appendChild(img);
+  } else { p.innerHTML='<span style="font-size:28px">🍽️</span>'; }
+}
+function updItem(i,f,v){if(aDraft.menus[aM])aDraft.menus[aM][i][f]=v;}
+function addItem(){
+  if(!aDraft.menus[aM])aDraft.menus[aM]=[];
+  const g=(aDraft.genres[aM]||[]).filter(g=>g!=='すべて');
+  aDraft.menus[aM].push({id:`${aM}_${Date.now()}`,name:'',desc:'',price:0,cal:0,genre:g[0]||'',img:''});
+  renderAItems();
+  setTimeout(()=>{
+    const last=document.querySelector('.admin-items-list .admin-item:last-child');
+    if(last) last.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },60);
+}
+function delItem(i){aDraft.menus[aM].splice(i,1);renderAItems();}
+
+/* drag & drop */
+let dIdx=null;
+function dS(e){dIdx=Number(this.dataset.idx);this.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain','');}
+function dO(e){
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  const dest=Number(this.dataset.idx);if(dIdx===null||dest===dIdx)return;
+  document.querySelectorAll('.admin-item').forEach((el,i)=>{
+    el.classList.remove('drag-over');
+    el.style.transform=(dIdx<dest&&i>dIdx&&i<=dest)?'translateY(-6px)':(dIdx>dest&&i>=dest&&i<dIdx)?'translateY(6px)':'';
+  });
+  this.classList.add('drag-over');
+}
+function dD(e){
+  e.preventDefault();const dest=Number(this.dataset.idx);
+  if(dIdx===null||dest===dIdx){dE();return;}
+  const arr=aDraft.menus[aM];const[it]=arr.splice(dIdx,1);arr.splice(dest,0,it);
+  dIdx=null;renderAItems();
+}
+function dE(){
+  document.querySelectorAll('.admin-item').forEach(el=>{el.classList.remove('dragging','drag-over');el.style.transform='';});
+  dIdx=null;
+}
+
+function saveAdmin(){
+  aDraft.set[aM]={
+    calTarget:Number(document.getElementById('calTargetInput').value)||0,
+    kenny1:document.getElementById('kUrl1').value.trim(),
+    kenny2:document.getElementById('kUrl2').value.trim(),
+    kenny3:document.getElementById('kUrl3').value.trim(),
+    kc1:document.getElementById('kCom1').value.trim(),
+    kc2:document.getElementById('kCom2').value.trim(),
+    kc3:document.getElementById('kCom3').value.trim(),
+  };
+  menuData=JSON.parse(JSON.stringify(aDraft.menus));
+  genreData=JSON.parse(JSON.stringify(aDraft.genres));
+  setData=JSON.parse(JSON.stringify(aDraft.set));
+  sv('fpa_menus2',menuData);sv('fpa_genres2',genreData);sv('fpa_set2',setData);
+  closeAdmin();order={};renderGenres();renderGrid();renderOrder();
+  toast('💾 保存しました！');
+}
+
+/* ─── TOAST ─────────────────────────────────────────── */
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+/* ─── INIT ───────────────────────────────────────────── */
+document.getElementById('fullBg').innerHTML=bgSVG('loi');
+initScroll();
+renderGenres();renderGrid();renderOrder();
+</script>
+</body>
+</html>
