@@ -1742,7 +1742,7 @@ function renderGrid(){
     });
   }
   renderPag(tot);
-  fitCardNames();
+  fitCardText();
 }
 
 function renderPag(tot){
@@ -1753,18 +1753,48 @@ function renderPag(tot){
 }
 function changePage(d){const t=Math.max(1,Math.ceil(filtered().length/6));pg=Math.max(0,Math.min(t-1,pg+d));renderGrid();}
 
-/* ── メニュー名を常に1行に収める（フォントサイズ縮小）── */
-function fitCardNames(){
+/* ── メニュー名を1行・説明文を2行に収める ── */
+function fitCardText(){
   requestAnimationFrame(()=>{
     document.querySelectorAll('.menu-card').forEach(card=>{
-      const el=card.querySelector('.card-name');
-      if(!el)return;
-      el.style.fontSize='';
-      if(el.scrollWidth<=el.clientWidth)return;
-      const base=parseFloat(getComputedStyle(el).fontSize);
-      for(let sz=base-1;sz>=16;sz--){
-        el.style.fontSize=sz+'px';
-        if(el.scrollWidth<=el.clientWidth)break;
+
+      /* ─ メニュー名：1行固定、フォント縮小 ─ */
+      const name=card.querySelector('.card-name');
+      if(name){
+        name.style.fontSize='';
+        if(name.scrollWidth>name.clientWidth){
+          const base=parseFloat(getComputedStyle(name).fontSize);
+          for(let sz=base-1;sz>=14;sz--){
+            name.style.fontSize=sz+'px';
+            if(name.scrollWidth<=name.clientWidth)break;
+          }
+        }
+      }
+
+      /* ─ 説明文：2行に収める、フォント縮小 ─ */
+      const desc=card.querySelector('.card-desc');
+      if(desc){
+        desc.style.fontSize='';
+        /* 2行の高さ = line-height × font-size × 2 */
+        const twoLineH=()=>{
+          const cs=getComputedStyle(desc);
+          const lh=parseFloat(cs.lineHeight); // px
+          return lh*2;
+        };
+        /* -webkit-line-clamp を一時的に外して実際の高さを測る */
+        desc.style.webkitLineClamp='none';
+        desc.style.display='block';
+        const isOver=()=>desc.scrollHeight>twoLineH()+2;
+        if(isOver()){
+          const base=parseFloat(getComputedStyle(desc).fontSize);
+          for(let sz=base-1;sz>=11;sz--){
+            desc.style.fontSize=sz+'px';
+            if(!isOver())break;
+          }
+        }
+        /* クランプを元に戻す */
+        desc.style.webkitLineClamp='';
+        desc.style.display='';
       }
     });
   });
